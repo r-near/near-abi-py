@@ -79,6 +79,11 @@ def extract_metadata(package_path: str) -> Dict[str, Any]:
     except importlib.metadata.PackageNotFoundError:
         near_sdk_version = "unknown"
 
+    try:
+        nearc_version = importlib.metadata.version("nearc")
+    except importlib.metadata.PackageNotFoundError:
+        nearc_version = "unknown"
+
     # Basic metadata with defaults
     metadata = {
         "name": Path(package_path).stem,
@@ -86,7 +91,8 @@ def extract_metadata(package_path: str) -> Dict[str, Any]:
         "authors": ["Unknown"],
         "build": {
             "compiler": f"python {platform.python_version()}",
-            "builder": f"near-sdk-py {near_sdk_version}",
+            "sdk": f"near-sdk-py {near_sdk_version}",
+            "builder": f"nearc {nearc_version}",
         },
     }
 
