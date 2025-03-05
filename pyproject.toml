@@ -1,0 +1,25 @@
+[project]
+name = "near-abi-py"
+version = "0.1.0"
+description = "ABI Builder for NEAR Python Smart Contracts"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "click>=8.1.8",
+    "jsonschema>=4.23.0",
+    "rich>=13.9.4",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "mypy>=1.15.0",
+ "ruff>=0.9.9",
+ "types-jsonschema>=4.23.0.20241208",
+]
+
+[project.scripts]
+near-abi-py = "near_abi_py.cli:main"
