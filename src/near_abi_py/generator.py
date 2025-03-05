@@ -8,6 +8,7 @@ using the metaschema.
 import ast
 import platform
 import importlib
+import importlib.metadata
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
