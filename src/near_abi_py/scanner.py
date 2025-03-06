@@ -88,52 +88,6 @@ def find_python_files(
     return python_files
 
 
-def resolve_main_files(python_files: List[str]) -> List[str]:
-    """
-    Identify potential main contract files from a list of Python files.
-
-    This looks for files that are likely to contain contract entry points
-    based on common naming patterns in NEAR contracts.
-
-    Args:
-        python_files: List of Python file paths
-
-    Returns:
-        List of likely main contract files, sorted by likelihood
-    """
-    # Score each file based on potential indicators of being a main contract file
-    scored_files = []
-
-    for file_path in python_files:
-        file_name = os.path.basename(file_path)
-        score = 0
-
-        # Check filename indicators
-        if file_name == "contract.py":
-            score += 10
-        elif file_name == "main.py":
-            score += 8
-        elif "contract" in file_name:
-            score += 5
-        elif "main" in file_name:
-            score += 4
-
-        # Prioritize files in the root directory
-        if (
-            len(Path(file_path).parts) - len(Path(os.path.dirname(file_path)).parts)
-            <= 1
-        ):
-            score += 3
-
-        scored_files.append((file_path, score))
-
-    # Sort by score, highest first
-    scored_files.sort(key=lambda x: x[1], reverse=True)
-
-    # Return paths only
-    return [path for path, _ in scored_files]
-
-
 def analyze_import_structure(
     project_path: str, python_files: List[str]
 ) -> Dict[str, List[str]]:
@@ -264,16 +218,12 @@ def scan_project(
         project_path, recursive=recursive, respect_gitignore=respect_gitignore
     )
 
-    # Identify main contract files
-    main_files = resolve_main_files(python_files)
-
     # Analyze dependencies
     dependencies = detect_contract_dependencies(project_path, python_files)
 
     return {
         "project_path": project_path,
         "python_files": python_files,
-        "main_files": main_files,
         "dependencies": dependencies,
         "file_count": len(python_files),
     }

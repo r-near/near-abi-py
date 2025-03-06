@@ -7,7 +7,7 @@ written in Python, following the same schema as NEAR's JavaScript/TypeScript SDK
 
 from .generator import generate_abi, generate_abi_from_files
 from .schema import validate_abi
-from .scanner import find_python_files, scan_project, resolve_main_files
+from .scanner import find_python_files, scan_project
 
 
 __version__ = "0.2.0"
@@ -19,5 +19,4 @@ __all__ = [
     "validate_abi",
     "find_python_files",
     "scan_project",
-    "resolve_main_files",
 ]

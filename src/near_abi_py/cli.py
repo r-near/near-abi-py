@@ -12,14 +12,13 @@ import os
 
 import click
 from rich.console import Console
-from rich.panel import Panel
 from rich.syntax import Syntax
 from rich.table import Table
 from rich.tree import Tree
 
 from .generator import generate_abi_from_files, generate_abi
 from .schema import validate_abi
-from .scanner import find_python_files, resolve_main_files
+from .scanner import find_python_files
 
 
 # Create Rich console
@@ -217,22 +216,6 @@ def scan(directory, recursive, respect_gitignore):
             current.add(f"[green]{parts[-1]}[/]")
 
         console.print(file_tree)
-
-        # Try to identify main contract files
-        main_files = resolve_main_files(python_files)
-        if main_files:
-            console.print(
-                Panel(
-                    "\n".join(
-                        [
-                            f"[cyan]{os.path.relpath(f, directory)}[/]"
-                            for f in main_files[:3]
-                        ]
-                    ),
-                    title="Likely Main Contract Files",
-                    expand=False,
-                )
-            )
 
         return 0
     except Exception as e:
