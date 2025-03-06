@@ -1,16 +1,17 @@
 """
-Simplified ABI generation for NEAR Python contracts.
+ABI generation for NEAR Python contracts.
 
 This module analyzes Python contract files and generates ABI definitions
-using the metaschema.
+using the metaschema, with support for multi-file projects.
 """
 
 import ast
 import platform
 import importlib
 import importlib.metadata
+import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 
 from .schema import (
     AbiFunctionKind,
@@ -24,7 +25,7 @@ def generate_abi(
     contract_file: str, package_path: Optional[str] = None
 ) -> Dict[str, Any]:
     """
-    Generate ABI for a Python NEAR contract
+    Generate ABI for a Python NEAR contract file
 
     Args:
         contract_file: Path to the Python contract file
@@ -48,6 +49,64 @@ def generate_abi(
     return abi
 
 
+def generate_abi_from_files(file_paths: List[str], project_dir: str) -> Dict[str, Any]:
+    """
+    Generate ABI from multiple Python files in a project directory
+
+    Args:
+        file_paths: List of Python file paths to analyze
+        project_dir: Root directory of the project
+
+    Returns:
+        ABI definition as a dictionary
+    """
+    # Create the basic ABI structure
+    abi = create_abi_skeleton()
+
+    # Extract metadata from project directory
+    abi["metadata"] = extract_project_metadata(project_dir)
+
+    # Track all functions found across files
+    all_functions = []
+
+    # Process each file
+    console_output = []
+    console_output.append(f"Processing {len(file_paths)} Python files:")
+
+    for file_path in file_paths:
+        rel_path = os.path.relpath(file_path, project_dir)
+        try:
+            # Parse the contract file
+            file_ast = parse_contract_file(file_path)
+
+            # Extract functions from the AST
+            functions = extract_functions(file_ast)
+
+            if functions:
+                # If functions found, add to our collection
+                all_functions.extend(functions)
+                console_output.append(
+                    f"  ✓ {rel_path}: Found {len(functions)} contract function(s)"
+                )
+            else:
+                console_output.append(f"  - {rel_path}: No contract functions found")
+
+        except Exception as e:
+            console_output.append(f"  × {rel_path}: Error: {str(e)}")
+
+    # Print processing summary
+    for line in console_output:
+        print(line)
+
+    # Add combined functions to ABI
+    abi["body"]["functions"] = all_functions
+
+    # Add source information to metadata
+    abi["metadata"]["sources"] = [os.path.relpath(f, project_dir) for f in file_paths]
+
+    return abi
+
+
 def parse_contract_file(file_path: str) -> ast.Module:
     """
     Parse a Python file into an AST
@@ -58,10 +117,10 @@ def parse_contract_file(file_path: str) -> ast.Module:
     Returns:
         AST module node
     """
-    with open(file_path, "r") as f:
+    with open(file_path, "r", encoding="utf-8") as f:
         code = f.read()
 
-    return ast.parse(code)
+    return ast.parse(code, filename=file_path)
 
 
 def extract_metadata(package_path: str) -> Dict[str, Any]:
@@ -92,9 +151,86 @@ def extract_metadata(package_path: str) -> Dict[str, Any]:
     }
 
     # Try to extract more information from package files
-    # This could be enhanced to read from pyproject.toml or setup.py
+    pyproject_path = find_project_file(package_path, "pyproject.toml")
+    if pyproject_path:
+        # Extract info from pyproject.toml if available
+        try:
+            import tomllib
+
+            with open(pyproject_path, "rb") as f:
+                pyproject_data = tomllib.load(f)
+
+            # Extract project info
+            if "project" in pyproject_data:
+                project = pyproject_data["project"]
+                if "name" in project:
+                    metadata["name"] = project["name"]
+                if "version" in project:
+                    metadata["version"] = project["version"]
+                if "authors" in project:
+                    metadata["authors"] = [
+                        author["name"] if isinstance(author, dict) else author
+                        for author in project["authors"]
+                    ]
+        except (ImportError, Exception):
+            # Fallback to simple metadata if tomli is not available
+            pass
 
     return metadata
+
+
+def extract_project_metadata(project_dir: str) -> Dict[str, Any]:
+    """
+    Extract metadata from a project directory
+
+    Args:
+        project_dir: Path to the project directory
+
+    Returns:
+        Metadata dictionary
+    """
+    # First, try to find pyproject.toml or setup.py
+    pyproject_path = os.path.join(project_dir, "pyproject.toml")
+    setup_path = os.path.join(project_dir, "setup.py")
+
+    if os.path.exists(pyproject_path):
+        return extract_metadata(pyproject_path)
+    elif os.path.exists(setup_path):
+        return extract_metadata(setup_path)
+    else:
+        # If no project files found, use directory name as project name
+        return extract_metadata(project_dir)
+
+
+def find_project_file(start_path: str, filename: str) -> Optional[str]:
+    """
+    Find a project file by searching upwards from start_path
+
+    Args:
+        start_path: Path to start searching from
+        filename: Name of file to search for
+
+    Returns:
+        Path to the found file, or None if not found
+    """
+    current_dir = os.path.abspath(start_path)
+
+    # If start_path is a file, start from its directory
+    if os.path.isfile(current_dir):
+        current_dir = os.path.dirname(current_dir)
+
+    # Search upwards until we find the file or hit the root
+    while True:
+        file_path = os.path.join(current_dir, filename)
+        if os.path.exists(file_path):
+            return file_path
+
+        # Move up one directory
+        parent_dir = os.path.dirname(current_dir)
+        if parent_dir == current_dir:  # Reached root
+            return None
+
+        current_dir = parent_dir
 
 
 def extract_functions(module_ast: ast.Module) -> List[Dict[str, Any]]:
@@ -108,6 +244,11 @@ def extract_functions(module_ast: ast.Module) -> List[Dict[str, Any]]:
         List of function definitions
     """
     functions = []
+
+    # Helper function to get the docstring
+    def get_docstring(node):
+        docstring = ast.get_docstring(node)
+        return docstring.strip() if docstring else ""
 
     # Helper function to find functions with NEAR decorators
     def visit_function(node):
@@ -130,9 +271,15 @@ def extract_functions(module_ast: ast.Module) -> List[Dict[str, Any]]:
                 decorator.func, ast.Name
             ):
                 decorator_name = decorator.func.id
+            elif isinstance(decorator, ast.Attribute) and isinstance(
+                decorator.value, ast.Name
+            ):
+                # Handle cases like "@near.view"
+                if decorator.value.id in ["near"]:
+                    decorator_name = decorator.attr
 
             # Skip if not a NEAR decorator
-            if decorator_name not in ["view", "call", "init"]:
+            if decorator_name not in ["view", "call", "init", "callback"]:
                 continue
 
             # Process decorator type
@@ -140,6 +287,9 @@ def extract_functions(module_ast: ast.Module) -> List[Dict[str, Any]]:
                 is_view = True
             elif decorator_name == "call":
                 is_call = True
+            elif decorator_name == "callback":
+                is_call = True
+                modifiers.append(AbiFunctionModifier.PRIVATE)
             elif decorator_name == "init":
                 is_init = True
                 modifiers.append(AbiFunctionModifier.INIT)
@@ -153,6 +303,11 @@ def extract_functions(module_ast: ast.Module) -> List[Dict[str, Any]]:
             "name": node.name,
             "kind": AbiFunctionKind.VIEW if is_view else AbiFunctionKind.CALL,
         }
+
+        # Add docstring if available
+        docstring = get_docstring(node)
+        if docstring:
+            func_def["description"] = docstring
 
         # Add modifiers if any
         if modifiers:
@@ -187,8 +342,14 @@ def extract_functions(module_ast: ast.Module) -> List[Dict[str, Any]]:
 
         functions.append(func_def)
 
-    # Visit all nodes in the AST
-    for node in ast.walk(module_ast):
+    # Visit all classes in the AST first (contract classes)
+    for node in ast.iter_child_nodes(module_ast):
+        if isinstance(node, ast.ClassDef):
+            for child in ast.iter_child_nodes(node):
+                visit_function(child)
+
+    # Then visit top-level functions (might be decorated contract functions)
+    for node in ast.iter_child_nodes(module_ast):
         visit_function(node)
 
     return functions
@@ -220,11 +381,87 @@ def extract_type_schema(type_annotation: Optional[ast.expr]) -> Dict[str, Any]:
             "list": {"type": "array"},
             "dict": {"type": "object"},
             "None": {"type": "null"},
+            # Common NEAR types
+            "AccountId": {"$ref": "#/definitions/AccountId"},
+            "Balance": {"$ref": "#/definitions/Balance"},
+            "Gas": {"$ref": "#/definitions/Gas"},
+            "PublicKey": {"$ref": "#/definitions/PublicKey"},
+            "Promise": {"$ref": "#/definitions/Promise"},
         }
 
         return type_map.get(type_name, {"type": "object"})
 
+    # Handle subscripts (like List[str])
+    elif isinstance(type_annotation, ast.Subscript):
+        value_id = ""
+        if isinstance(type_annotation.value, ast.Name):
+            value_id = type_annotation.value.id
+
+        # Handle List[T]
+        if value_id in ["List", "list"]:
+            # Try to get the type parameter
+            item_schema = {"type": "object"}  # Default item type
+
+            # Extract the item type if possible
+            if hasattr(type_annotation, "slice"):
+                item_schema = extract_type_schema(type_annotation.slice)
+
+            return {"type": "array", "items": item_schema}
+
+        # Handle Dict[K, V]
+        elif value_id in ["Dict", "dict"]:
+            # For Dict, we'd need to extract key and value types
+            # But JSON Schema doesn't really handle this well, so we simplify
+            return {"type": "object"}
+
+        # Handle Optional[T]
+        elif value_id == "Optional":
+            # Try to extract the inner type
+            inner_schema = {"type": "object"}  # Default
+
+            if hasattr(type_annotation, "slice"):
+                inner_schema = extract_type_schema(type_annotation.slice)
+
+            # Make the schema nullable
+            if inner_schema.get("type") and inner_schema["type"] != "null":
+                # If type is already a list, append "null"
+                if isinstance(inner_schema["type"], list):
+                    if "null" not in inner_schema["type"]:
+                        inner_schema["type"].append("null")
+                else:
+                    # Convert string type to a list with the original type and "null"
+                    # Use cast to tell mypy this can be assigned a list
+                    type_val = inner_schema["type"]
+                    inner_schema["type"] = cast(Any, [type_val, "null"])
+
+            return inner_schema
+
     # For more complex types, use a generic schema
-    # This is simplified - a full implementation would handle generics,
-    # unions, etc. by parsing the AST more completely
     return {"type": "object"}
+
+
+def _debug_ast(node, indent=0):
+    """
+    Helper function to debug AST nodes during development
+
+    Args:
+        node: AST node to debug
+        indent: Current indentation level
+    """
+    prefix = "  " * indent
+    print(f"{prefix}{type(node).__name__}")
+
+    if isinstance(node, ast.AST):
+        for field, value in ast.iter_fields(node):
+            print(f"{prefix}  {field}: ", end="")
+
+            if isinstance(value, list):
+                print(f"[{len(value)} items]")
+                for item in value:
+                    if isinstance(item, ast.AST):
+                        _debug_ast(item, indent + 2)
+            elif isinstance(value, ast.AST):
+                print()
+                _debug_ast(value, indent + 2)
+            else:
+                print(value)

@@ -5,11 +5,19 @@ A tool for generating Application Binary Interface (ABI) definitions for NEAR sm
 written in Python, following the same schema as NEAR's JavaScript/TypeScript SDK.
 """
 
-from .generator import generate_abi
+from .generator import generate_abi, generate_abi_from_files
 from .schema import validate_abi
+from .scanner import find_python_files, scan_project, resolve_main_files
 
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 
-__all__ = ["generate_abi", "validate_abi"]
+__all__ = [
+    "generate_abi",
+    "generate_abi_from_files",
+    "validate_abi",
+    "find_python_files",
+    "scan_project",
+    "resolve_main_files",
+]
