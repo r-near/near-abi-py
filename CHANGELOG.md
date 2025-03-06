@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.2.0 (2025-03-06)
+
+### Features
+
+- Release 0.2.0
+  ([`c31b830`](https://github.com/r-near/near-abi-py/commit/c31b83037ce731f42b2ef7c0ce6acfe6249edb4b))
+
+
 ## v0.1.0 (2025-03-06)
 
 ### Bug Fixes
