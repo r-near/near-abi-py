@@ -74,9 +74,6 @@ def generate(source_path, output, validate, recursive, respect_gitignore):
                 file_tree.add(f"[blue]{rel_path}[/]")
             console.print(file_tree)
 
-            # Try to identify main contract files
-            main_files = resolve_main_files(python_files)
-
             # Generate ABI from all files
             console.print("[bold blue]Analyzing contract files...[/]")
             abi = generate_abi_from_files(python_files, source_path)
@@ -194,7 +191,6 @@ def scan(directory, recursive, respect_gitignore):
         console.print(f"[bold green]Found {len(python_files)} Python files:[/]")
 
         file_tree = Tree(f"[bold]{directory}[/]")
-        prev_parts = []
 
         # Sort files for better tree structure
         python_files.sort()
@@ -206,8 +202,6 @@ def scan(directory, recursive, respect_gitignore):
             # Create tree structure
             current = file_tree
             for i, part in enumerate(parts[:-1]):
-                current_parts = parts[: i + 1]
-
                 # Find or create node
                 found = False
                 for child in current.children:
