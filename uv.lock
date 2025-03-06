@@ -328,13 +328,13 @@ dependencies = [
     { name = "click" },
     { name = "jsonschema" },
     { name = "pathspec" },
-    { name = "python-semantic-release" },
     { name = "rich" },
 ]
 
 [package.dev-dependencies]
 dev = [
     { name = "mypy" },
+    { name = "python-semantic-release" },
     { name = "ruff" },
     { name = "types-jsonschema" },
 ]
@@ -344,13 +344,13 @@ requires-dist = [
     { name = "click", specifier = ">=8.1.8" },
     { name = "jsonschema", specifier = ">=4.23.0" },
     { name = "pathspec", specifier = ">=0.12.1" },
-    { name = "python-semantic-release", specifier = ">=9.21.0" },
     { name = "rich", specifier = ">=13.9.4" },
 ]
 
 [package.metadata.requires-dev]
 dev = [
     { name = "mypy", specifier = ">=1.15.0" },
+    { name = "python-semantic-release", specifier = ">=9.21.0" },
     { name = "ruff", specifier = ">=0.9.9" },
     { name = "types-jsonschema", specifier = ">=4.23.0.20241208" },
 ]
