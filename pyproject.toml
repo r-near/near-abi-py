@@ -7,6 +7,7 @@ requires-python = ">=3.11"
 dependencies = [
     "click>=8.1.8",
     "jsonschema>=4.23.0",
+    "pathspec>=0.12.1",
     "rich>=13.9.4",
 ]
 
@@ -17,9 +18,17 @@ build-backend = "hatchling.build"
 [dependency-groups]
 dev = [
     "mypy>=1.15.0",
+    "python-semantic-release>=9.21.0",
  "ruff>=0.9.9",
  "types-jsonschema>=4.23.0.20241208",
 ]
 
 [project.scripts]
 near-abi-py = "near_abi_py.cli:main"
+
+[tool.semantic_release]
+version_toml = ["pyproject.toml:project.version"]
+branch = "main"
+changelog_file = "CHANGELOG.md"
+commit_message = "chore(release): {version} [skip ci]"
+build_command = "uv build"

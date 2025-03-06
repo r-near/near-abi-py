@@ -8,6 +8,7 @@ ABI Builder for NEAR Python Smart Contracts - generate standardized interface de
 ## 🔑 Key Features
 
 - Generate ABI schemas from Python NEAR smart contracts
+- **Support for multi-file projects and directory scanning**
 - Validate existing ABI definitions against the official schema
 - Command-line interface for easy integration into build processes
 - Usable as a library in your Python projects
@@ -32,8 +33,14 @@ uvx near-abi-py generate example.py
 ### CLI Usage
 
 ```bash
-# Generate ABI from a contract file
+# Generate ABI from a single contract file
 near-abi-py generate example.py
+
+# Generate ABI from a project directory
+near-abi-py generate ./my_contract_project/
+
+# Scan and list Python files in a directory
+near-abi-py scan ./my_contract_project/
 
 # Generate and save to a specific output file
 near-abi-py generate example.py -o example.abi.json
@@ -45,10 +52,14 @@ near-abi-py validate contract.abi.json
 ### Library Usage
 
 ```python
-from near_abi_py import generate_abi, validate_abi
+from near_abi_py import generate_abi, generate_abi_from_files, validate_abi, find_python_files
 
-# Generate ABI from a contract file
+# Generate ABI from a single contract file
 abi = generate_abi("path/to/contract.py")
+
+# Or generate ABI from multiple files
+python_files = find_python_files("path/to/project_dir")
+abi = generate_abi_from_files(python_files, "path/to/project_dir")
 
 # Validate the generated ABI
 validation_messages = validate_abi(abi)
@@ -68,6 +79,12 @@ NEAR ABI Python analyzes Python smart contract files by:
 4. Generating a standardized ABI schema following NEAR's specifications
 5. Validating the schema against the official metaschema
 
+For multi-file projects:
+
+1. The tool scans the entire directory for Python files
+2. It analyzes each file for contract functions
+3. Functions from all files are combined into a single comprehensive ABI
+
 The resulting ABI can be used by developer tools, IDEs, and frontends to:
 
 - Understand contract interfaces
@@ -81,26 +98,32 @@ The resulting ABI can be used by developer tools, IDEs, and frontends to:
 near-abi-py [COMMAND] [OPTIONS]
 
 Commands:
-  generate    Generate ABI from a contract file
+  generate    Generate ABI from a contract file or directory
   validate    Validate an existing ABI file
+  scan        List Python files in a directory that would be scanned
 
 Options for 'generate':
-  --output, -o    Output file path (default: stdout)
-  --validate, -v  Validate the generated ABI before output
+  --output, -o               Output file path (default: stdout)
+  --validate, -v             Validate the generated ABI before output
+  --recursive/--no-recursive Scan subdirectories recursively (default: recursive)
+  --respect-gitignore/--ignore-gitignore
+                           Respect .gitignore patterns (default: respect)
 
-Options for 'validate':
-  (no additional options)
+Options for 'scan':
+  --recursive/--no-recursive Scan subdirectories recursively (default: recursive)
+  --respect-gitignore/--ignore-gitignore
+                           Respect .gitignore patterns (default: respect)
 
 General options:
-  --help          Show this help message
-  --version       Show version information
+  --help                    Show this help message
+  --version                 Show version information
 ```
 
 ## 📚 Library API
 
 ### `generate_abi(contract_file: str, package_path: Optional[str] = None) -> Dict[str, Any]`
 
-Analyzes a Python contract file and generates the corresponding ABI.
+Analyzes a single Python contract file and generates the corresponding ABI.
 
 **Parameters:**
 
@@ -110,6 +133,33 @@ Analyzes a Python contract file and generates the corresponding ABI.
 **Returns:**
 
 - ABI definition as a dictionary
+
+### `generate_abi_from_files(file_paths: List[str], project_dir: str) -> Dict[str, Any]`
+
+Generates an ABI from multiple Python files in a project directory.
+
+**Parameters:**
+
+- `file_paths`: List of Python file paths to analyze
+- `project_dir`: Root directory of the project
+
+**Returns:**
+
+- ABI definition as a dictionary
+
+### `find_python_files(directory: str, recursive: bool = True, respect_gitignore: bool = True) -> List[str]`
+
+Finds all Python files in a directory, optionally respecting .gitignore patterns.
+
+**Parameters:**
+
+- `directory`: Path to the directory to scan
+- `recursive`: Whether to scan subdirectories recursively
+- `respect_gitignore`: Whether to respect .gitignore patterns
+
+**Returns:**
+
+- List of paths to Python files
 
 ### `validate_abi(abi: Dict[str, Any]) -> List[str]`
 
@@ -193,6 +243,43 @@ Example of a generated ABI:
 }
 ```
 
+## 🧠 Working with Multi-file Projects
+
+NEAR ABI Python now supports analyzing multi-file NEAR contract projects. When a directory is provided instead of a single file, the tool:
+
+1. Scans for all Python files in the directory (recursively by default)
+2. Respects .gitignore patterns (if pathspec is installed)
+3. Analyzes each file for NEAR contract functions
+4. Combines all discovered functions into a single comprehensive ABI
+5. Automatically detects project metadata from pyproject.toml if available
+
+This is especially useful for larger contracts split across multiple files or when your contract depends on local modules.
+
+### Example Multi-file Project Structure
+
+```
+
+my_near_contract/
+├── pyproject.toml
+├── contract.py # Main contract entry points
+├── models/
+│ ├── __init__.py
+│ ├── account.py # Account-related functions
+│ └── token.py # Token-related functions
+└── utils/
+├── __init__.py
+└── helpers.py # Helper functions
+
+```
+
+When running:
+
+```bash
+near-abi-py generate my_near_contract/
+```
+
+The tool will scan all Python files in the project and combine all NEAR-decorated functions (@view, @call, @init) into a single ABI.
+
 ## 🔄 Integration with NEAR Tools
 
 NEAR ABI Python complements the following tools in the NEAR Python ecosystem:
@@ -209,6 +296,7 @@ While the SDK provides the framework for writing contracts and the compiler turn
 - Document your contract API in a standard format
 - Validate contract implementations against interface specifications
 - Support cross-language contract development and interaction
+- **Analyze complex, multi-file NEAR contract projects**
 
 ## 🧩 Examples
 
@@ -255,8 +343,8 @@ get_greeting = contract.get_greeting
 # Compile the contract
 nearc contract.py
 
-# Generate the ABI
-near-abi-py generate contract.py -o contract.abi.json
+# Generate the ABI (works with directories too)
+near-abi-py generate ./src/ -o contract.abi.json
 
 # Deploy the contract (example)
 near deploy myaccount.testnet contract.wasm
