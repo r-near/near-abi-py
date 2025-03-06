@@ -278,11 +278,11 @@ my_near_contract/
 ├── pyproject.toml
 ├── contract.py # Main contract entry points
 ├── models/
-│ ├── **init**.py
+│ ├── __init__.py
 │ ├── account.py # Account-related functions
 │ └── token.py # Token-related functions
 └── utils/
-├── **init**.py
+├── __init__.py
 └── helpers.py # Helper functions
 
 ```
