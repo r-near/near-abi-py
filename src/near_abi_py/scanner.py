@@ -7,7 +7,7 @@ and build a complete view of a multi-file NEAR contract project.
 
 import os
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import List
 import pathspec
 
 
