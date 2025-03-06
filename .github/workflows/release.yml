@@ -11,6 +11,7 @@ jobs:
       name: release
     permissions:
       id-token: write
+      contents: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -18,8 +19,13 @@ jobs:
       - name: Setup uv
         uses: astral-sh/setup-uv@v5
 
-      - name: Build wheels
-        run: uv build
+      - name: Create release
+        id: semantic_release
+        continue-on-error: true
+        run: uvx python-semantic-release -vv version
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Publish to PyPI
+        if: steps.semantic_release.outcome == 'success'
         run: uv publish --trusted-publishing always
