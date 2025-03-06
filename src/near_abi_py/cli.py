@@ -220,8 +220,6 @@ def scan(directory, recursive, respect_gitignore):
         return 0
     except Exception as e:
         console.print(f"[bold red]Error scanning directory:[/] {str(e)}")
-        console.print_exception(show_locals=True)
-
         return 1
 
 

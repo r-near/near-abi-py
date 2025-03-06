@@ -438,30 +438,3 @@ def extract_type_schema(type_annotation: Optional[ast.expr]) -> Dict[str, Any]:
 
     # For more complex types, use a generic schema
     return {"type": "object"}
-
-
-def _debug_ast(node, indent=0):
-    """
-    Helper function to debug AST nodes during development
-
-    Args:
-        node: AST node to debug
-        indent: Current indentation level
-    """
-    prefix = "  " * indent
-    print(f"{prefix}{type(node).__name__}")
-
-    if isinstance(node, ast.AST):
-        for field, value in ast.iter_fields(node):
-            print(f"{prefix}  {field}: ", end="")
-
-            if isinstance(value, list):
-                print(f"[{len(value)} items]")
-                for item in value:
-                    if isinstance(item, ast.AST):
-                        _debug_ast(item, indent + 2)
-            elif isinstance(value, ast.AST):
-                print()
-                _debug_ast(value, indent + 2)
-            else:
-                print(value)

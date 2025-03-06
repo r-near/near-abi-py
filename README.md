@@ -84,7 +84,6 @@ For multi-file projects:
 1. The tool scans the entire directory for Python files
 2. It analyzes each file for contract functions
 3. Functions from all files are combined into a single comprehensive ABI
-4. The tool automatically identifies likely main contract files
 
 The resulting ABI can be used by developer tools, IDEs, and frontends to:
 
@@ -161,20 +160,6 @@ Finds all Python files in a directory, optionally respecting .gitignore patterns
 **Returns:**
 
 - List of paths to Python files
-
-### `scan_project(project_path: str, recursive: bool = True, respect_gitignore: bool = True) -> Dict[str, Any]`
-
-Scans a project directory and analyzes its structure.
-
-**Parameters:**
-
-- `project_path`: Path to the project directory
-- `recursive`: Whether to scan subdirectories recursively
-- `respect_gitignore`: Whether to respect .gitignore patterns
-
-**Returns:**
-
-- Dictionary with project analysis results
 
 ### `validate_abi(abi: Dict[str, Any]) -> List[str]`
 
