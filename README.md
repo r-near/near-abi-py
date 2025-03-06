@@ -188,6 +188,76 @@ Validates an ABI against the official schema.
 
 - List of validation error messages (empty if valid)
 
+## 🧠 Understanding NEAR ABI Format
+
+The generated ABI follows [NEAR's ABI specification](https://github.com/near/NEPs/pull/451) and includes:
+
+- Contract metadata (name, version, authors)
+- Function definitions (name, parameters, return types)
+- Function modifiers (view, call, init, etc.)
+- Type information in JSON Schema format
+
+Example of a generated ABI:
+
+```json
+{
+  "schema_version": "0.4.0",
+  "metadata": {
+    "name": "greeting",
+    "version": "0.1.0",
+    "authors": ["Example Author"],
+    "build": {
+      "compiler": "python 3.11.5",
+      "builder": "near-sdk-py 0.3.0"
+    }
+  },
+  "body": {
+    "functions": [
+      {
+        "name": "get_greeting",
+        "kind": "view",
+        "params": {
+          "serialization_type": "json",
+          "args": []
+        },
+        "result": {
+          "serialization_type": "json",
+          "type_schema": {
+            "type": "string"
+          }
+        }
+      },
+      {
+        "name": "set_greeting",
+        "kind": "call",
+        "params": {
+          "serialization_type": "json",
+          "args": [
+            {
+              "name": "message",
+              "type_schema": {
+                "type": "string"
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "root_schema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "NEAR Contract Schema",
+      "definitions": {
+        "AccountId": {
+          "type": "string",
+          "description": "NEAR account identifier"
+        }
+        // Additional NEAR types...
+      }
+    }
+  }
+}
+```
+
 ## 🧠 Working with Multi-file Projects
 
 NEAR ABI Python now supports analyzing multi-file NEAR contract projects. When a directory is provided instead of a single file, the tool:
@@ -203,16 +273,18 @@ This is especially useful for larger contracts split across multiple files or wh
 ### Example Multi-file Project Structure
 
 ```
+
 my_near_contract/
-  ├── pyproject.toml
-  ├── contract.py           # Main contract entry points
-  ├── models/
-  │   ├── __init__.py
-  │   ├── account.py        # Account-related functions
-  │   └── token.py          # Token-related functions
-  └── utils/
-      ├── __init__.py
-      └── helpers.py        # Helper functions
+├── pyproject.toml
+├── contract.py # Main contract entry points
+├── models/
+│ ├── **init**.py
+│ ├── account.py # Account-related functions
+│ └── token.py # Token-related functions
+└── utils/
+├── **init**.py
+└── helpers.py # Helper functions
+
 ```
 
 When running:
