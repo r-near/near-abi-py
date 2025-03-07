@@ -1,6 +1,21 @@
 # CHANGELOG
 
 
+## v0.3.0 (2025-03-07)
+
+### Features
+
+- Add Support for Complex Type Analysis in ABI Generator
+  ([#5](https://github.com/r-near/near-abi-py/pull/5),
+  [`e6c825a`](https://github.com/r-near/near-abi-py/commit/e6c825a52ab1967198916a25bdd02fe31e0b1a21))
+
+* feat: Complex Type Analysis
+
+* Linting
+
+* chore: Delete this
+
+
 ## v0.2.0 (2025-03-06)
 
 ### Features
