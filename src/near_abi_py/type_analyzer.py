@@ -14,7 +14,7 @@ from typing import Any, Dict, Optional
 class TypeRegistry:
     """Registry of user-defined types found in the AST."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.types: Dict[str, ast.ClassDef] = {}
         self.imports: Dict[
             str, str
@@ -245,13 +245,7 @@ def extract_type_schema(
             key_type, value_type = None, None
 
             # Different approaches based on Python version
-            if isinstance(type_node.slice, ast.Index):
-                # Python < 3.9
-                slice_value = type_node.slice.value
-                if isinstance(slice_value, ast.Tuple) and len(slice_value.elts) == 2:
-                    key_type, value_type = slice_value.elts
-            elif isinstance(type_node.slice, ast.Tuple):
-                # Python >= 3.9
+            if isinstance(type_node.slice, ast.Tuple):
                 if len(type_node.slice.elts) == 2:
                     key_type, value_type = type_node.slice.elts
             else:
@@ -287,15 +281,7 @@ def extract_type_schema(
         # Handle Union[T1, T2, ...]
         elif container_type == "Union":
             union_types = []
-
-            # Extract union types based on Python version
-            if isinstance(type_node.slice, ast.Index):
-                # Python < 3.9
-                slice_value = type_node.slice.value
-                if isinstance(slice_value, ast.Tuple):
-                    union_types = slice_value.elts
-            elif isinstance(type_node.slice, ast.Tuple):
-                # Python >= 3.9
+            if isinstance(type_node.slice, ast.Tuple):
                 union_types = type_node.slice.elts
 
             # Create schema
@@ -309,16 +295,7 @@ def extract_type_schema(
             literals = []
 
             # Extract literal values based on Python version
-            if isinstance(type_node.slice, ast.Index):
-                # Python < 3.9
-                slice_value = type_node.slice.value
-                if isinstance(slice_value, ast.Tuple):
-                    for elt in slice_value.elts:
-                        literals.append(extract_literal_value(elt))
-                else:
-                    literals.append(extract_literal_value(slice_value))
-            elif isinstance(type_node.slice, ast.Tuple):
-                # Python >= 3.9
+            if isinstance(type_node.slice, ast.Tuple):
                 for elt in type_node.slice.elts:
                     literals.append(extract_literal_value(elt))
             else:
@@ -334,15 +311,7 @@ def extract_type_schema(
             item_types = []
 
             # Extract tuple types based on Python version
-            if isinstance(type_node.slice, ast.Index):
-                # Python < 3.9
-                slice_value = type_node.slice.value
-                if isinstance(slice_value, ast.Tuple):
-                    item_types = slice_value.elts
-                else:
-                    item_types = [slice_value]
-            elif isinstance(type_node.slice, ast.Tuple):
-                # Python >= 3.9
+            if isinstance(type_node.slice, ast.Tuple):
                 item_types = type_node.slice.elts
             else:
                 # Single value
@@ -391,12 +360,7 @@ def extract_slice_value(subscript_node: ast.Subscript) -> Optional[ast.expr]:
     Returns:
         The extracted type node from the slice
     """
-    if isinstance(subscript_node.slice, ast.Index):
-        # Python < 3.9
-        return subscript_node.slice.value
-    else:
-        # Python >= 3.9
-        return subscript_node.slice
+    return subscript_node.slice
 
 
 def extract_literal_value(node: ast.expr) -> Any:
