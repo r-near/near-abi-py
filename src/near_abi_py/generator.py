@@ -11,7 +11,7 @@ import importlib
 import importlib.metadata
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional, cast
+from typing import Any, Dict, List, Optional
 
 from .schema import (
     AbiFunctionKind,
@@ -19,6 +19,8 @@ from .schema import (
     AbiSerializationType,
     create_abi_skeleton,
 )
+
+from .type_analyzer import scan_module_for_types, extract_type_schema
 
 
 def generate_abi(
@@ -245,6 +247,9 @@ def extract_functions(module_ast: ast.Module) -> List[Dict[str, Any]]:
     """
     functions = []
 
+    # First, scan the module for custom types
+    type_registry = scan_module_for_types(module_ast)
+
     # Helper function to get the docstring
     def get_docstring(node):
         docstring = ast.get_docstring(node)
@@ -304,11 +309,6 @@ def extract_functions(module_ast: ast.Module) -> List[Dict[str, Any]]:
             "kind": AbiFunctionKind.VIEW if is_view else AbiFunctionKind.CALL,
         }
 
-        # Add docstring if available
-        docstring = get_docstring(node)
-        if docstring:
-            func_def["description"] = docstring
-
         # Add modifiers if any
         if modifiers:
             func_def["modifiers"] = modifiers
@@ -324,7 +324,9 @@ def extract_functions(module_ast: ast.Module) -> List[Dict[str, Any]]:
                 for param in params:
                     param_def = {
                         "name": param.arg,
-                        "type_schema": extract_type_schema(param.annotation),
+                        "type_schema": extract_type_schema(
+                            param.annotation, type_registry
+                        ),
                     }
                     param_defs.append(param_def)
 
@@ -337,7 +339,7 @@ def extract_functions(module_ast: ast.Module) -> List[Dict[str, Any]]:
         if node.returns:
             func_def["result"] = {
                 "serialization_type": AbiSerializationType.JSON,
-                "type_schema": extract_type_schema(node.returns),
+                "type_schema": extract_type_schema(node.returns, type_registry),
             }
 
         functions.append(func_def)
@@ -353,88 +355,3 @@ def extract_functions(module_ast: ast.Module) -> List[Dict[str, Any]]:
         visit_function(node)
 
     return functions
-
-
-def extract_type_schema(type_annotation: Optional[ast.expr]) -> Dict[str, Any]:
-    """
-    Extract JSON Schema from type annotation
-
-    Args:
-        type_annotation: AST node for type annotation
-
-    Returns:
-        JSON Schema representation of the type
-    """
-    if type_annotation is None:
-        return {"type": "object"}
-
-    # Handle basic types
-    if isinstance(type_annotation, ast.Name):
-        type_name = type_annotation.id
-
-        # Map Python types to JSON Schema
-        type_map = {
-            "str": {"type": "string"},
-            "int": {"type": "integer"},
-            "float": {"type": "number"},
-            "bool": {"type": "boolean"},
-            "list": {"type": "array"},
-            "dict": {"type": "object"},
-            "None": {"type": "null"},
-            # Common NEAR types
-            "AccountId": {"$ref": "#/definitions/AccountId"},
-            "Balance": {"$ref": "#/definitions/Balance"},
-            "Gas": {"$ref": "#/definitions/Gas"},
-            "PublicKey": {"$ref": "#/definitions/PublicKey"},
-            "Promise": {"$ref": "#/definitions/Promise"},
-        }
-
-        return type_map.get(type_name, {"type": "object"})
-
-    # Handle subscripts (like List[str])
-    elif isinstance(type_annotation, ast.Subscript):
-        value_id = ""
-        if isinstance(type_annotation.value, ast.Name):
-            value_id = type_annotation.value.id
-
-        # Handle List[T]
-        if value_id in ["List", "list"]:
-            # Try to get the type parameter
-            item_schema = {"type": "object"}  # Default item type
-
-            # Extract the item type if possible
-            if hasattr(type_annotation, "slice"):
-                item_schema = extract_type_schema(type_annotation.slice)
-
-            return {"type": "array", "items": item_schema}
-
-        # Handle Dict[K, V]
-        elif value_id in ["Dict", "dict"]:
-            # For Dict, we'd need to extract key and value types
-            # But JSON Schema doesn't really handle this well, so we simplify
-            return {"type": "object"}
-
-        # Handle Optional[T]
-        elif value_id == "Optional":
-            # Try to extract the inner type
-            inner_schema = {"type": "object"}  # Default
-
-            if hasattr(type_annotation, "slice"):
-                inner_schema = extract_type_schema(type_annotation.slice)
-
-            # Make the schema nullable
-            if inner_schema.get("type") and inner_schema["type"] != "null":
-                # If type is already a list, append "null"
-                if isinstance(inner_schema["type"], list):
-                    if "null" not in inner_schema["type"]:
-                        inner_schema["type"].append("null")
-                else:
-                    # Convert string type to a list with the original type and "null"
-                    # Use cast to tell mypy this can be assigned a list
-                    type_val = inner_schema["type"]
-                    inner_schema["type"] = cast(Any, [type_val, "null"])
-
-            return inner_schema
-
-    # For more complex types, use a generic schema
-    return {"type": "object"}
