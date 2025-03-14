@@ -1,6 +1,19 @@
 # CHANGELOG
 
 
+## v0.4.0 (2025-03-14)
+
+### Chores
+
+- **deps**: Create dependabot.yml
+  ([`0254c6a`](https://github.com/r-near/near-abi-py/commit/0254c6af6d540754d03cc9a1523f4b0c9caca678))
+
+### Features
+
+- Support nearc ([#1](https://github.com/r-near/near-abi-py/pull/1),
+  [`967ed80`](https://github.com/r-near/near-abi-py/commit/967ed80b5ddca5139423c9a4c8aa34b84190abf6))
+
+
 ## v0.3.0 (2025-03-07)
 
 ### Features
