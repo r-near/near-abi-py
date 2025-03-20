@@ -1,27 +1,20 @@
-#!/usr/bin/env python3
 """
-Command-line interface for the NEAR Python ABI Builder.
-
-This module provides a CLI using Click and Rich with support for
-multi-file project directories.
+Command-line interface for NEAR Python ABI Builder.
 """
 
 import json
-import sys
 import os
 
 import click
 from rich.console import Console
+from rich.panel import Panel
 from rich.syntax import Syntax
 from rich.table import Table
-from rich.tree import Tree
 
-from .generator import generate_abi_from_files, generate_abi
-from .schema import validate_abi
-from .scanner import find_python_files
+from near_abi_py.generator import generate_abi, generate_abi_from_files
+from near_abi_py.utils import find_python_files, validate_abi
 
-
-# Create Rich console
+# Console for rich output
 console = Console()
 
 
@@ -37,19 +30,19 @@ def cli():
 @click.option(
     "--output", "-o", type=click.Path(), help="Output file path (default: stdout)"
 )
-@click.option("--validate", "-v", is_flag=True, help="Validate the generated ABI")
 @click.option(
     "--recursive/--no-recursive",
     default=True,
     help="Scan subdirectories recursively (only for directory input)",
 )
 @click.option(
-    "--respect-gitignore/--ignore-gitignore",
+    "--validate/--no-validate",
     default=True,
-    help="Respect .gitignore patterns (only for directory input)",
+    help="Validate the generated ABI against the schema",
 )
-def generate(source_path, output, validate, recursive, respect_gitignore):
+def generate(source_path, output, recursive, validate):
     """Generate ABI from a Python contract file or directory."""
+
     try:
         # Check if source is a file or directory
         is_directory = os.path.isdir(source_path)
@@ -58,70 +51,58 @@ def generate(source_path, output, validate, recursive, respect_gitignore):
             console.print(f"[bold blue]Scanning directory:[/] {source_path}")
 
             # Find Python files in directory
-            python_files = find_python_files(
-                source_path, recursive=recursive, respect_gitignore=respect_gitignore
-            )
+            python_files = find_python_files(source_path, recursive=recursive)
 
             if not python_files:
                 console.print("[bold red]Error:[/] No Python files found in directory")
                 return 1
 
             # Display found files
-            file_tree = Tree(f"[bold]Found {len(python_files)} Python files:[/]")
+            file_table = Table(title=f"Found {len(python_files)} Python Files")
+            file_table.add_column("File", style="cyan")
+
             for file in python_files:
                 rel_path = os.path.relpath(file, source_path)
-                file_tree.add(f"[blue]{rel_path}[/]")
-            console.print(file_tree)
+                file_table.add_row(rel_path)
+
+            console.print(file_table)
 
             # Generate ABI from all files
-            console.print("[bold blue]Analyzing contract files...[/]")
-            abi = generate_abi_from_files(python_files, source_path)
+            with console.status("[bold green]Analyzing contract files...[/]"):
+                abi = generate_abi_from_files(python_files, source_path)
 
         else:
             # Single file mode
             console.print(f"[bold blue]Analyzing contract:[/] {source_path}")
-            abi = generate_abi(source_path)
+            with console.status("[bold green]Analyzing contract...[/]"):
+                abi = generate_abi(source_path)
+
+        # Display function summary
+        display_functions_summary(abi)
 
         # Validate if requested
         if validate:
-            console.print("[bold blue]Validating ABI...[/]")
-            messages = validate_abi(abi)
-            if messages:
-                console.print("[bold yellow]Validation results:[/]")
+            with console.status("[bold green]Validating ABI...[/]"):
+                is_valid, messages = validate_abi(abi)
+
+            if not is_valid:
+                console.print("[bold red]Validation failed:[/]")
                 for msg in messages:
-                    console.print(f"  [bold yellow]![/] {msg}")
-                console.print()
+                    console.print(f"  [red]![/] {msg}")
             else:
-                console.print("[bold green]✓ ABI is valid[/]\n")
+                console.print("[bold green]✓[/] ABI is valid")
 
         # Output the ABI
         json_output = json.dumps(abi, indent=2)
         if output:
             with open(output, "w") as f:
                 f.write(json_output)
-            console.print(f"[bold green]✓ ABI written to:[/] {output}")
+            console.print(f"[bold green]✓[/] ABI written to: {output}")
         else:
-            # Pretty print JSON to console
-            console.print("[bold blue]Generated ABI:[/]")
+            # Print JSON to console in a nicer format
+            console.print("\n[bold]Generated ABI:[/]")
             syntax = Syntax(json_output, "json", theme="monokai", line_numbers=True)
-            console.print(syntax)
-
-        # Display functions summary
-        functions = abi["body"]["functions"]
-        if functions:
-            table = Table(title="Contract Functions")
-            table.add_column("Function", style="cyan")
-            table.add_column("Kind", style="green")
-            table.add_column("Parameters", style="yellow")
-
-            for func in functions:
-                name = func["name"]
-                kind = func["kind"]
-                params = func.get("params", {}).get("args", [])
-                param_str = ", ".join(p["name"] for p in params) if params else "-"
-                table.add_row(name, kind, param_str)
-
-            console.print(table)
+            console.print(Panel(syntax, expand=False))
 
         return 0
     except Exception as e:
@@ -129,29 +110,46 @@ def generate(source_path, output, validate, recursive, respect_gitignore):
         return 1
 
 
-@cli.command(help="Validate an ABI file")
+@cli.command(help="Validate an existing ABI file against the schema")
 @click.argument(
     "abi_file", type=click.Path(exists=True, file_okay=True, dir_okay=False)
 )
-def validate(abi_file):
-    """Validate an existing ABI file."""
+def validate_command(abi_file):
+    """Validate an existing ABI file against the schema."""
+
     try:
+        # Load ABI from file
+        console.print(f"[bold blue]Validating ABI file:[/] {abi_file}")
         with open(abi_file, "r") as f:
             abi = json.load(f)
 
-        console.print(f"[bold blue]Validating ABI file:[/] {abi_file}")
-        messages = validate_abi(abi)
+        # Validate against schema
+        with console.status("[bold green]Validating ABI...[/]"):
+            is_valid, messages = validate_abi(abi)
 
-        if messages:
-            console.print("[bold yellow]Validation results:[/]")
+        if not is_valid:
+            console.print("[bold red]Validation failed:[/]")
             for msg in messages:
-                if msg.startswith("Error"):
-                    console.print(f"  [bold red]×[/] {msg}")
-                else:
-                    console.print(f"  [bold yellow]![/] {msg}")
-            return 1 if any(msg.startswith("Error") for msg in messages) else 0
+                console.print(f"  [red]![/] {msg}")
+            return 1
         else:
             console.print("[bold green]✓ ABI is valid[/]")
+
+            # Display a summary of the ABI
+            metadata = abi.get("metadata", {})
+            functions = abi.get("body", {}).get("functions", [])
+
+            metadata_table = Table(title="ABI Metadata")
+            metadata_table.add_column("Property", style="cyan")
+            metadata_table.add_column("Value", style="green")
+
+            for key, value in metadata.items():
+                if key != "build" and key != "sources":
+                    metadata_table.add_row(key, str(value))
+
+            console.print(metadata_table)
+            console.print(f"[bold]Found {len(functions)} contract functions[/]")
+
             return 0
     except json.JSONDecodeError:
         console.print("[bold red]Error:[/] The file is not valid JSON")
@@ -161,72 +159,53 @@ def validate(abi_file):
         return 1
 
 
-@cli.command(help="List Python files in a directory that would be scanned")
-@click.argument(
-    "directory", type=click.Path(exists=True, file_okay=False, dir_okay=True)
-)
-@click.option(
-    "--recursive/--no-recursive", default=True, help="Scan subdirectories recursively"
-)
-@click.option(
-    "--respect-gitignore/--ignore-gitignore",
-    default=True,
-    help="Respect .gitignore patterns",
-)
-def scan(directory, recursive, respect_gitignore):
-    """Scan and list Python files in a directory."""
-    try:
-        console.print(f"[bold blue]Scanning directory:[/] {directory}")
+def display_functions_summary(abi: dict) -> None:
+    """
+    Display a summary of the functions in the ABI.
 
-        python_files = find_python_files(
-            directory, recursive=recursive, respect_gitignore=respect_gitignore
-        )
+    Args:
+        abi: The ABI to display
+    """
+    functions = abi.get("body", {}).get("functions", [])
+    if not functions:
+        console.print("[yellow]No contract functions found in the source.[/]")
+        return
 
-        if not python_files:
-            console.print("[bold yellow]No Python files found in directory[/]")
-            return 0
+    table = Table(title="Contract Functions")
+    table.add_column("Function", style="cyan")
+    table.add_column("Kind", style="green")
+    table.add_column("Modifiers", style="magenta")
+    table.add_column("Parameters", style="yellow")
+    table.add_column("Return Type", style="blue")
 
-        # Display found files
-        console.print(f"[bold green]Found {len(python_files)} Python files:[/]")
+    for func in functions:
+        name = func["name"]
+        kind = func["kind"]
 
-        file_tree = Tree(f"[bold]{directory}[/]")
+        # Get modifiers
+        modifiers = func.get("modifiers", [])
+        mod_str = ", ".join(modifiers) if modifiers else "-"
 
-        # Sort files for better tree structure
-        python_files.sort()
+        # Get parameters
+        params = func.get("params", {}).get("args", [])
+        param_str = ", ".join(p["name"] for p in params) if params else "-"
 
-        for file in python_files:
-            rel_path = os.path.relpath(file, directory)
-            parts = rel_path.split(os.path.sep)
+        # Get return type
+        result = func.get("result")
+        if result:
+            schema = result.get("type_schema", {})
+            if isinstance(schema, dict):
+                result_type = schema.get("type", "?")
+            else:
+                result_type = str(schema)
+        else:
+            result_type = "-"
 
-            # Create tree structure
-            current = file_tree
-            for i, part in enumerate(parts[:-1]):
-                # Find or create node
-                found = False
-                for child in current.children:
-                    if child.label == f"[bold blue]{part}/[/]":
-                        current = child
-                        found = True
-                        break
+        table.add_row(name, kind, mod_str, param_str, result_type)
 
-                if not found:
-                    current = current.add(f"[bold blue]{part}/[/]")
-
-            # Add file leaf
-            current.add(f"[green]{parts[-1]}[/]")
-
-        console.print(file_tree)
-
-        return 0
-    except Exception as e:
-        console.print(f"[bold red]Error scanning directory:[/] {str(e)}")
-        return 1
+    console.print(table)
 
 
 def main():
     """Entry point for the command-line interface."""
     return cli()
-
-
-if __name__ == "__main__":
-    sys.exit(main())
