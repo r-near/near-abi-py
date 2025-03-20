@@ -4,19 +4,16 @@ Command-line interface commands for NEAR Python ABI Builder.
 
 import json
 import os
-import sys
-from typing import Tuple, List, Dict, Any
+from typing import Any, Dict
 
 import click
-from rich.console import Console
-from rich.table import Table
 from rich.panel import Panel
 from rich.syntax import Syntax
-from rich.markdown import Markdown
+from rich.table import Table
 
 from ..analyzer.loader import ModuleLoader
 from ..core.schema import SchemaManager
-from ..core.utils import console, configure_console
+from ..core.utils import configure_console, console
 from ..generator import generate_abi, generate_abi_from_files
 
 
