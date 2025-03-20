@@ -1,6 +1,35 @@
 # CHANGELOG
 
 
+## v0.5.0 (2025-03-20)
+
+### Features
+
+- Release
+  ([`0bc4b87`](https://github.com/r-near/near-abi-py/commit/0bc4b87a817e2b7dcc3c7b6cf6f8a5e85473a122))
+
+### Refactoring
+
+- Switch to Pydantic-based type extraction ([#7](https://github.com/r-near/near-abi-py/pull/7),
+  [`1e1f2cb`](https://github.com/r-near/near-abi-py/commit/1e1f2cba898c18f4d1dcd6c33a397e4898560f95))
+
+* feat: Complex Type Analysis
+
+* Linting
+
+* chore: Delete this
+
+* Full refactor
+
+* Update lockfile
+
+* Delete this
+
+* Add tests
+
+* Fixes for linting
+
+
 ## v0.4.0 (2025-03-14)
 
 ### Chores
