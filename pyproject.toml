@@ -36,9 +36,11 @@ changelog_file = "CHANGELOG.md"
 commit_message = "chore(release): {version} [skip ci]"
 build_command = "uv build"
 
+[tool.ruff]
+exclude = ["tests/fixtures/invalid_syntax.py"]
+
 [tool.ruff.lint]
 extend-select = ["I"]
-exclude = ["tests/fixtures/invalid_syntax.py"]
 
 [tool.mypy]
 exclude = ["tests/fixtures/invalid_syntax.py"]
