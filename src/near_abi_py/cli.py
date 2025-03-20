@@ -1,20 +1,21 @@
 """
-Command-line interface commands for NEAR Python ABI Builder.
+Command-line interface for NEAR Python ABI Builder.
 """
 
 import json
 import os
-from typing import Any, Dict
 
 import click
+from rich.console import Console
 from rich.panel import Panel
 from rich.syntax import Syntax
 from rich.table import Table
 
-from ..analyzer.loader import ModuleLoader
-from ..core.schema import SchemaManager
-from ..core.utils import configure_console, console
-from ..generator import generate_abi, generate_abi_from_files
+from near_abi_py.generator import generate_abi, generate_abi_from_files
+from near_abi_py.utils import find_python_files, validate_abi
+
+# Console for rich output
+console = Console()
 
 
 @click.group(help="NEAR Python ABI Builder")
@@ -39,57 +40,8 @@ def cli():
     default=True,
     help="Validate the generated ABI against the schema",
 )
-@click.option("--no-color", is_flag=True, help="Disable colored output")
-def generate(source_path, output, recursive, validate, no_color):
+def generate(source_path, output, recursive, validate):
     """Generate ABI from a Python contract file or directory."""
-    # Configure color settings
-    configure_console(not no_color)
-
-    def display_functions_summary(abi: Dict[str, Any]) -> None:
-        """
-        Display a summary of the functions in the ABI.
-
-        Args:
-            abi: The ABI to display
-        """
-        functions = abi.get("body", {}).get("functions", [])
-        if not functions:
-            console.print("[yellow]No contract functions found in the source.[/]")
-            return
-
-        table = Table(title="Contract Functions")
-        table.add_column("Function", style="cyan")
-        table.add_column("Kind", style="green")
-        table.add_column("Modifiers", style="magenta")
-        table.add_column("Parameters", style="yellow")
-        table.add_column("Return Type", style="blue")
-
-        for func in functions:
-            name = func["name"]
-            kind = func["kind"]
-
-            # Get modifiers
-            modifiers = func.get("modifiers", [])
-            mod_str = ", ".join(modifiers) if modifiers else "-"
-
-            # Get parameters
-            params = func.get("params", {}).get("args", [])
-            param_str = ", ".join(p["name"] for p in params) if params else "-"
-
-            # Get return type
-            result = func.get("result")
-            if result:
-                schema = result.get("type_schema", {})
-                if isinstance(schema, dict):
-                    result_type = schema.get("type", "?")
-                else:
-                    result_type = str(schema)
-            else:
-                result_type = "-"
-
-            table.add_row(name, kind, mod_str, param_str, result_type)
-
-        console.print(table)
 
     try:
         # Check if source is a file or directory
@@ -99,8 +51,7 @@ def generate(source_path, output, recursive, validate, no_color):
             console.print(f"[bold blue]Scanning directory:[/] {source_path}")
 
             # Find Python files in directory
-            loader = ModuleLoader()
-            python_files = loader.find_python_files(source_path, recursive=recursive)
+            python_files = find_python_files(source_path, recursive=recursive)
 
             if not python_files:
                 console.print("[bold red]Error:[/] No Python files found in directory")
@@ -132,8 +83,7 @@ def generate(source_path, output, recursive, validate, no_color):
         # Validate if requested
         if validate:
             with console.status("[bold green]Validating ABI...[/]"):
-                schema_manager = SchemaManager()
-                is_valid, messages = schema_manager.validate_abi(abi)
+                is_valid, messages = validate_abi(abi)
 
             if not is_valid:
                 console.print("[bold red]Validation failed:[/]")
@@ -156,10 +106,7 @@ def generate(source_path, output, recursive, validate, no_color):
 
         return 0
     except Exception as e:
-        print(f"Error generating ABI: {str(e)}")
-        import traceback
-
-        traceback.print_exc()
+        console.print(f"[bold red]Error generating ABI:[/] {str(e)}")
         return 1
 
 
@@ -167,11 +114,8 @@ def generate(source_path, output, recursive, validate, no_color):
 @click.argument(
     "abi_file", type=click.Path(exists=True, file_okay=True, dir_okay=False)
 )
-@click.option("--no-color", is_flag=True, help="Disable colored output")
-def validate(abi_file, no_color):
+def validate_command(abi_file):
     """Validate an existing ABI file against the schema."""
-    # Configure color settings
-    configure_console(not no_color)
 
     try:
         # Load ABI from file
@@ -181,8 +125,7 @@ def validate(abi_file, no_color):
 
         # Validate against schema
         with console.status("[bold green]Validating ABI...[/]"):
-            schema_manager = SchemaManager()
-            is_valid, messages = schema_manager.validate_abi(abi)
+            is_valid, messages = validate_abi(abi)
 
         if not is_valid:
             console.print("[bold red]Validation failed:[/]")
@@ -214,3 +157,55 @@ def validate(abi_file, no_color):
     except Exception as e:
         console.print(f"[bold red]Error validating ABI file:[/] {str(e)}")
         return 1
+
+
+def display_functions_summary(abi: dict) -> None:
+    """
+    Display a summary of the functions in the ABI.
+
+    Args:
+        abi: The ABI to display
+    """
+    functions = abi.get("body", {}).get("functions", [])
+    if not functions:
+        console.print("[yellow]No contract functions found in the source.[/]")
+        return
+
+    table = Table(title="Contract Functions")
+    table.add_column("Function", style="cyan")
+    table.add_column("Kind", style="green")
+    table.add_column("Modifiers", style="magenta")
+    table.add_column("Parameters", style="yellow")
+    table.add_column("Return Type", style="blue")
+
+    for func in functions:
+        name = func["name"]
+        kind = func["kind"]
+
+        # Get modifiers
+        modifiers = func.get("modifiers", [])
+        mod_str = ", ".join(modifiers) if modifiers else "-"
+
+        # Get parameters
+        params = func.get("params", {}).get("args", [])
+        param_str = ", ".join(p["name"] for p in params) if params else "-"
+
+        # Get return type
+        result = func.get("result")
+        if result:
+            schema = result.get("type_schema", {})
+            if isinstance(schema, dict):
+                result_type = schema.get("type", "?")
+            else:
+                result_type = str(schema)
+        else:
+            result_type = "-"
+
+        table.add_row(name, kind, mod_str, param_str, result_type)
+
+    console.print(table)
+
+
+def main():
+    """Entry point for the command-line interface."""
+    return cli()

@@ -320,7 +320,7 @@ def complex_action(
         Results of the action
     """
     # This is just a demonstration of complex types
-    results = {}
+    results: Dict[str, Union[bool, str]] = {}
     for token_id in token_ids:
         results[token_id] = token_id in tokens
 
