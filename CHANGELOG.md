@@ -1,6 +1,35 @@
 # CHANGELOG
 
 
+## v0.5.1 (2025-04-03)
+
+### Bug Fixes
+
+- **deps**: Bump pydantic from 2.10.6 to 2.11.2
+  ([#10](https://github.com/r-near/near-abi-py/pull/10),
+  [`d438d56`](https://github.com/r-near/near-abi-py/commit/d438d56d14ecfe671ee48bb703b45247c7f58aa7))
+
+Bumps [pydantic](https://github.com/pydantic/pydantic) from 2.10.6 to 2.11.2. - [Release
+  notes](https://github.com/pydantic/pydantic/releases) -
+  [Changelog](https://github.com/pydantic/pydantic/blob/main/HISTORY.md) -
+  [Commits](https://github.com/pydantic/pydantic/compare/v2.10.6...v2.11.2)
+
+--- updated-dependencies: - dependency-name: pydantic dependency-version: 2.11.2
+
+dependency-type: direct:production
+
+update-type: version-update:semver-minor ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+### Chores
+
+- Create LICENSE
+  ([`19695dd`](https://github.com/r-near/near-abi-py/commit/19695dd9fd3fae673bdb1b5fd1059afd2cced6d2))
+
+
 ## v0.5.0 (2025-03-20)
 
 ### Features
