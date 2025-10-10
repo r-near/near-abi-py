@@ -351,11 +351,11 @@ dev = [
 
 [[package]]
 name = "near-sdk-py"
-version = "0.7.3"
+version = "1.0.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/1c/2b/b2034f9ea396de9284ce3231a90a7afdda2a6c8fb27353cc4cc80f3ba069/near_sdk_py-0.7.3.tar.gz", hash = "sha256:4bfa6dd8f7f1d3aa5f87e8242e8bc9f89d39b63b6e59b8e8836bc9e3c26ff7d1", size = 156102, upload-time = "2025-04-02T23:34:26.713Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/d7/66/4de0abdcaef64a637e446df18eb56d1f05b26312cffadfd6a3997dafd399/near_sdk_py-1.0.0.tar.gz", hash = "sha256:c7e20b4ea7259262b1c1308134c2d1f43c5a447ddd6d68d12ecc13169a88da48", size = 159703, upload-time = "2025-10-09T21:00:44.356Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/13/ca/88a61b3d5e0fbd1e9e1103e2e4ba4424539a0810d92169268dc29fed4e1f/near_sdk_py-0.7.3-py3-none-any.whl", hash = "sha256:91c1264d74ae9da86765558e1b9841872d506cebb707b5cbd76ae279cae073a3", size = 41816, upload-time = "2025-04-02T23:34:25.467Z" },
+    { url = "https://files.pythonhosted.org/packages/0a/f6/e5f26ec862e4d71832669743976267547e7a2e424acdddf8103d0935be6b/near_sdk_py-1.0.0-py3-none-any.whl", hash = "sha256:9a604a226f3d146ff99e37b1d8668234d75136e7570bb2389b7f206d08d7d17d", size = 41814, upload-time = "2025-10-09T21:00:42.475Z" },
 ]
 
 [[package]]
